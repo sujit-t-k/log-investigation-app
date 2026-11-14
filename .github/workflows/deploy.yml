@@ -1,0 +1,93 @@
+name: Build and Publish Application Images
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE: ghcr.io/sujit-t-k/log-investigation-backend
+  FRONTEND_IMAGE: ghcr.io/sujit-t-k/log-investigation-frontend
+
+jobs:
+
+  build-and-publish:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Step 1: Checkout repository
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Java
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # Step 3: Test Spring Boot backend
+      - name: Test backend
+        working-directory: log-investigation-backend
+        run: mvn -B test
+
+      # Step 4: Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: log-investigation-frontend/package-lock.json
+
+      # Step 5: Build React frontend
+      - name: Build frontend
+        working-directory: log-investigation-frontend
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+        run: |
+          npm ci
+          npm run build
+
+      # Step 6: Authenticate with GHCR
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Step 7: Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Step 8: Build and publish backend image
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./log-investigation-backend
+          push: true
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:latest
+            ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+
+      # Step 9: Build and publish frontend image
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./log-investigation-frontend
+          push: true
+          build-args: |
+            VITE_API_BASE_URL=${{ vars.VITE_API_BASE_URL }}
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:latest
+            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}

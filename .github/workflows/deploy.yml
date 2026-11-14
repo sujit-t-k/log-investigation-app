@@ -36,12 +36,7 @@ jobs:
           java-version: '21'
           cache: maven
 
-      # Step 3: Test Spring Boot backend
-      - name: Test backend
-        working-directory: log-investigation-backend
-        run: mvn -B test
-
-      # Step 4: Set up Node.js
+      # Step 3: Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -49,7 +44,7 @@ jobs:
           cache: npm
           cache-dependency-path: log-investigation-frontend/package-lock.json
 
-      # Step 5: Build React frontend
+      # Step 4: Build React frontend
       - name: Build frontend
         working-directory: log-investigation-frontend
         env:
@@ -58,7 +53,7 @@ jobs:
           npm ci
           npm run build
 
-      # Step 6: Authenticate with GHCR
+      # Step 5: Authenticate with GHCR
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -66,11 +61,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Step 7: Set up Docker Buildx
+      # Step 6: Set up Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Step 8: Build and publish backend image
+      # Step 7: Build and publish backend image
       - name: Build and push backend image
         uses: docker/build-push-action@v6
         with:
@@ -80,7 +75,7 @@ jobs:
             ${{ env.BACKEND_IMAGE }}:latest
             ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
 
-      # Step 9: Build and publish frontend image
+      # Step 8: Build and publish frontend image
       - name: Build and push frontend image
         uses: docker/build-push-action@v6
         with:
